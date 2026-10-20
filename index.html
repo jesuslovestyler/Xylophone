@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Xylophone</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fdf3e0;
+        --bg-glow: #ffe9bd;
+        --ink: #4a2c14;
+        --ink-soft: #7a5a38;
+        --card: #fffaf0;
+        --card-edge: #e8cf9f;
+        --pill-bg: #ffffff;
+        --pill-edge: #d9b878;
+        --accent: #c2571b;
+        --accent-ink: #ffffff;
+        --rail: #8a5a2b;
+        --rail-dark: #6e4520;
+        --board-shadow: rgba(122, 74, 20, 0.35);
+        --label: #4a2a10;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #241708;
+          --bg-glow: #3a2410;
+          --ink: #f7e3c2;
+          --ink-soft: #cda87c;
+          --card: #33200f;
+          --card-edge: #5d3f1e;
+          --pill-bg: #3d270f;
+          --pill-edge: #7a5527;
+          --accent: #e07f2e;
+          --accent-ink: #2a1705;
+          --rail: #5d3a17;
+          --rail-dark: #472c10;
+          --board-shadow: rgba(0, 0, 0, 0.55);
+          --label: #3a2008;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: ui-rounded, "SF Pro Rounded", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+        background:
+          radial-gradient(120% 60% at 50% 0%, var(--bg-glow) 0%, var(--bg) 55%);
+        background-color: var(--bg);
+        color: var(--ink);
+        min-height: 100vh;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 14px 14px 30px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 6px;
+      }
+      .home-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: var(--pill-bg);
+        border: 1.5px solid var(--pill-edge);
+        color: var(--ink);
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        box-shadow: 0 2px 6px rgba(90, 55, 10, 0.15);
+      }
+      .home-pill:active { transform: translateY(1px); }
+      header { text-align: center; padding: 4px 6px 2px; }
+      h1 {
+        margin: 6px 0 4px;
+        font-size: clamp(34px, 7vw, 52px);
+        letter-spacing: 0.5px;
+        line-height: 1.05;
+      }
+      .intro {
+        margin: 0 auto 4px;
+        max-width: 560px;
+        font-size: clamp(15px, 3.6vw, 18px);
+        color: var(--ink-soft);
+        line-height: 1.45;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        margin: 16px auto 6px;
+        max-width: 760px;
+      }
+      .voice-switch {
+        display: flex;
+        background: var(--card);
+        border: 1.5px solid var(--card-edge);
+        border-radius: 999px;
+        padding: 4px;
+        gap: 4px;
+        box-shadow: 0 2px 8px rgba(90, 55, 10, 0.12);
+      }
+      .voice-btn {
+        border: 0;
+        background: transparent;
+        color: var(--ink-soft);
+        font: inherit;
+        font-weight: 700;
+        font-size: 15px;
+        padding: 9px 16px;
+        border-radius: 999px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .voice-btn[aria-pressed="true"] {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 2px 6px rgba(150, 70, 10, 0.35);
+      }
+      .demo-btn {
+        border: 0;
+        font: inherit;
+        font-weight: 800;
+        font-size: 16px;
+        padding: 13px 22px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--accent-ink);
+        cursor: pointer;
+        box-shadow: 0 3px 10px rgba(150, 70, 10, 0.35);
+      }
+      .demo-btn:active { transform: translateY(1px); }
+      .demo-btn.playing { background: var(--rail-dark); }
+      .volume {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: var(--card);
+        border: 1.5px solid var(--card-edge);
+        border-radius: 999px;
+        padding: 9px 16px;
+        box-shadow: 0 2px 8px rgba(90, 55, 10, 0.12);
+      }
+      .volume label { font-weight: 700; font-size: 14px; color: var(--ink-soft); }
+      .volume input[type="range"] {
+        width: 130px;
+        accent-color: var(--accent);
+        height: 28px;
+        cursor: pointer;
+      }
+      /* ---------- the instrument ---------- */
+      .board-frame {
+        margin: 14px auto 0;
+        max-width: 940px;
+        background: linear-gradient(180deg, var(--rail), var(--rail-dark));
+        border-radius: 18px;
+        padding: 16px 12px 18px;
+        box-shadow: 0 14px 30px var(--board-shadow), inset 0 2px 0 rgba(255,255,255,0.18);
+      }
+      .board {
+        position: relative;
+        height: clamp(290px, 52vh, 430px);
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .row-naturals {
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        height: 76%;
+        display: flex;
+        align-items: flex-end;
+      }
+      .bar {
+        border: 0;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        position: relative;
+        border-radius: 9px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        color: var(--label);
+        box-shadow:
+          inset 0 -8px 12px rgba(90, 40, 0, 0.28),
+          inset 0 3px 4px rgba(255, 240, 200, 0.55),
+          0 4px 8px rgba(60, 30, 0, 0.35);
+        background-image:
+          repeating-linear-gradient(93deg, rgba(120, 60, 10, 0.10) 0 3px, rgba(255,255,255,0.05) 3px 7px, rgba(90, 45, 5, 0.07) 7px 11px),
+          linear-gradient(180deg, var(--wood-hi), var(--wood) 55%, var(--wood-lo));
+        transform-origin: 50% 100%;
+      }
+      .bar .note {
+        font-weight: 800;
+        font-size: clamp(11px, 2.6vw, 17px);
+        padding-bottom: 10px;
+        pointer-events: none;
+        text-shadow: 0 1px 0 rgba(255, 235, 190, 0.6);
+      }
+      .bar .pin {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #ffe9b0, #9c6b23 70%, #6e4510);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        pointer-events: none;
+      }
+      .row-naturals .bar .pin { top: 9px; }
+      .bar.sharp {
+        position: absolute;
+        z-index: 3;
+        color: #f3ddba;
+        border-radius: 8px;
+        box-shadow:
+          inset 0 -8px 12px rgba(0, 0, 0, 0.45),
+          inset 0 3px 4px rgba(255, 220, 170, 0.25),
+          0 5px 10px rgba(40, 18, 0, 0.5);
+        background-image:
+          repeating-linear-gradient(93deg, rgba(0,0,0,0.16) 0 3px, rgba(255,255,255,0.04) 3px 7px, rgba(0,0,0,0.10) 7px 11px),
+          linear-gradient(180deg, var(--wood-hi), var(--wood) 55%, var(--wood-lo));
+      }
+      .bar.sharp .note {
+        font-size: clamp(9px, 2vw, 13px);
+        padding-bottom: 7px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+      }
+      .bar.sharp .pin { bottom: 26px; top: auto; }
+      .bar.struck {
+        animation: bar-bounce 0.28s ease-out;
+        filter: brightness(1.28) saturate(1.1);
+        box-shadow:
+          inset 0 -8px 12px rgba(90, 40, 0, 0.28),
+          inset 0 3px 4px rgba(255, 240, 200, 0.55),
+          0 0 22px 4px rgba(255, 196, 64, 0.85),
+          0 4px 8px rgba(60, 30, 0, 0.35);
+      }
+      .bar.sharp.struck {
+        box-shadow:
+          inset 0 -8px 12px rgba(0, 0, 0, 0.45),
+          inset 0 3px 4px rgba(255, 220, 170, 0.25),
+          0 0 22px 4px rgba(255, 196, 64, 0.85),
+          0 5px 10px rgba(40, 18, 0, 0.5);
+      }
+      @keyframes bar-bounce {
+        0% { transform: translateY(0) scaleY(1); }
+        30% { transform: translateY(5px) scaleY(0.965); }
+        60% { transform: translateY(-2px) scaleY(1.012); }
+        100% { transform: translateY(0) scaleY(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bar.struck { animation: none; }
+      }
+      .hint {
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 14.5px;
+        margin: 14px auto 0;
+        max-width: 600px;
+        line-height: 1.5;
+      }
+      .fineprint {
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 12.5px;
+        margin: 10px auto 0;
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <a class="home-pill" href="https://jesuslovestyler.com/">⌂ Home</a>
+      </div>
+
+      <header>
+        <h1 id="instName">Xylophone</h1>
+        <p class="intro">Tap the wooden bars and make a joyful noise — drag a finger or mouse across them and let the music run like a mallet over the keys.</p>
+      </header>
+
+      <div class="controls">
+        <div class="voice-switch" role="group" aria-label="Instrument voice">
+          <button class="voice-btn" type="button" data-voice="xylophone" aria-pressed="true">Xylophone</button>
+          <button class="voice-btn" type="button" data-voice="marimba" aria-pressed="false">Marimba</button>
+          <button class="voice-btn" type="button" data-voice="glockenspiel" aria-pressed="false">Glockenspiel</button>
+        </div>
+        <button class="demo-btn" id="demoBtn" type="button">▶ Play Ode to Joy</button>
+        <div class="volume">
+          <label for="vol">Volume</label>
+          <input id="vol" type="range" min="0" max="100" value="60" aria-label="Volume" />
+        </div>
+      </div>
+
+      <div class="board-frame">
+        <div class="board" id="board" aria-label="Playable bars"></div>
+      </div>
+
+      <p class="hint">Tip: hold and slide across the bars for a glissando. Many bars can ring together — try a chord with two fingers.</p>
+      <p class="fineprint">Every sound is synthesized live on your device with the Web Audio API — no audio files, nothing recorded, and nothing sent anywhere.</p>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ---------------- note layout ----------------
+           Two octaves of naturals: C D E F G A B C D E F G A B C
+           (semitone offsets 0..24 from the lowest C). Sharps sit in
+           the raised back row between their neighbours. */
+        var NATURAL_NAMES = ["C", "D", "E", "F", "G", "A", "B"];
+        var naturals = []; // {name, semi}
+        for (var oct = 0; oct < 2; oct++) {
+          var base = oct * 12;
+          var semis = [0, 2, 4, 5, 7, 9, 11];
+          for (var i = 0; i < 7; i++) naturals.push({ name: NATURAL_NAMES[i], semi: base + semis[i] });
+        }
+        naturals.push({ name: "C", semi: 24 });
+
+        var SHARP_AFTER = { C: "C♯", D: "D♯", F: "F♯", G: "G♯", A: "A♯" };
+
+        /* Warm wood tones, gently varied bar to bar (rosewood / honey). */
+        function woodFor(t, sharp) {
+          // t: 0 (lowest) .. 1 (highest)
+          if (sharp) {
+            var h = 24 + t * 6, s = 52, lHi = 30 - t * 5, l = 22 - t * 4, lLo = 14 - t * 3;
+            return {
+              hi: "hsl(" + h + "," + s + "%," + lHi + "%)",
+              mid: "hsl(" + h + "," + s + "%," + l + "%)",
+              lo: "hsl(" + h + "," + (s + 6) + "%," + lLo + "%)"
+            };
+          }
+          var hue = 26 + t * 8;              // deeper red-brown -> warmer honey
+          var sat = 62 - t * 8;
+          return {
+            hi: "hsl(" + hue + "," + sat + "%," + (58 - t * 6) + "%)",
+            mid: "hsl(" + hue + "," + sat + "%," + (46 - t * 5) + "%)",
+            lo: "hsl(" + hue + "," + (sat + 4) + "%," + (34 - t * 4) + "%)"
+          };
+        }
+
+        /* ---------------- voices ----------------
+           partials: [frequency ratio, gain, ring seconds]            */
+        var VOICES = {
+          xylophone: {
+            name: "Xylophone",
+            baseMidi: 72, // C5
+            filterFreq: 7000,
+            noiseFreq: 2600, noiseGain: 0.20, noiseDur: 0.03,
+            partials: [
+              [1.0, 1.0, 0.55],
+              [3.98, 0.34, 0.26],
+              [9.92, 0.10, 0.12]
+            ]
+          },
+          marimba: {
+            name: "Marimba",
+            baseMidi: 60, // C4 — one octave below the xylophone
+            filterFreq: 1700,
+            noiseFreq: 850, noiseGain: 0.08, noiseDur: 0.045,
+            partials: [
+              [1.0, 1.0, 1.7],
+              [3.92, 0.26, 0.55],
+              [9.8, 0.05, 0.18]
+            ]
+          },
+          glockenspiel: {
+            name: "Glockenspiel",
+            baseMidi: 84, // C6 — one octave above the xylophone
+            filterFreq: 11000,
+            noiseFreq: 5200, noiseGain: 0.12, noiseDur: 0.02,
+            partials: [
+              [1.0, 1.0, 3.4],
+              [2.01, 0.42, 2.3],
+              [2.74, 0.52, 1.7],
+              [5.43, 0.26, 1.0],
+              [8.21, 0.11, 0.55]
+            ],
+            shimmerCents: 5 // a whisper-detuned twin of the fundamental, for the bell shimmer
+          }
+        };
+        var currentVoice = "xylophone";
+
+        /* ---------------- audio engine ---------------- */
+        var actx = null, master = null, noiseBuffer = null;
+
+        function ensureAudio() {
+          if (!actx) {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return false;
+            actx = new AC();
+            var comp = actx.createDynamicsCompressor();
+            comp.threshold.value = -16;
+            comp.knee.value = 22;
+            comp.ratio.value = 8;
+            comp.connect(actx.destination);
+            master = actx.createGain();
+            master.gain.value = volumeValue;
+            master.connect(comp);
+            // one shared white-noise buffer for the mallet "tick"
+            var len = Math.floor(actx.sampleRate * 0.1);
+            noiseBuffer = actx.createBuffer(1, len, actx.sampleRate);
+            var data = noiseBuffer.getChannelData(0);
+            for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+          }
+          if (actx.state === "suspended") actx.resume();
+          return true;
+        }
+
+        function freqFor(semi) {
+          var v = VOICES[currentVoice];
+          var midi = v.baseMidi + semi;
+          return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        function strikeSound(semi) {
+          if (!ensureAudio()) return;
+          var v = VOICES[currentVoice];
+          var f = freqFor(semi);
+          var t = actx.currentTime;
+
+          var filter = actx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = v.filterFreq;
+          filter.Q.value = 0.4;
+          filter.connect(master);
+
+          // mallet tick
+          var noise = actx.createBufferSource();
+          noise.buffer = noiseBuffer;
+          var nFilter = actx.createBiquadFilter();
+          nFilter.type = "bandpass";
+          nFilter.frequency.value = v.noiseFreq;
+          nFilter.Q.value = 1.1;
+          var nGain = actx.createGain();
+          nGain.gain.setValueAtTime(v.noiseGain, t);
+          nGain.gain.exponentialRampToValueAtTime(0.0001, t + v.noiseDur);
+          noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(master);
+          noise.start(t); noise.stop(t + v.noiseDur + 0.02);
+
+          for (var p = 0; p < v.partials.length; p++) {
+            var ratio = v.partials[p][0], g = v.partials[p][1], ring = v.partials[p][2];
+            addPartial(f * ratio, g, ring, t, filter, 0);
+            if (v.shimmerCents && ratio === 1.0) {
+              addPartial(f * ratio, g * 0.45, ring * 0.8, t, filter, v.shimmerCents);
+            }
+          }
+        }
+
+        function addPartial(freq, peak, ring, t, dest, detuneCents) {
+          var osc = actx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          if (detuneCents) osc.detune.value = detuneCents;
+          var gain = actx.createGain();
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t + 0.004);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + ring);
+          osc.connect(gain); gain.connect(dest);
+          osc.start(t);
+          osc.stop(t + ring + 0.1);
+        }
+
+        /* ---------------- build the bars ---------------- */
+        var board = document.getElementById("board");
+        var barBySemi = {};   // semitone offset -> element
+        var barEls = [];
+
+        function makeBar(semi, label, sharp) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "bar" + (sharp ? " sharp" : "");
+          b.setAttribute("aria-label", label + " bar");
+          b.dataset.semi = semi;
+          var wood = woodFor(semi / 24, sharp);
+          b.style.setProperty("--wood-hi", wood.hi);
+          b.style.setProperty("--wood", wood.mid);
+          b.style.setProperty("--wood-lo", wood.lo);
+          var pin = document.createElement("span");
+          pin.className = "pin";
+          var note = document.createElement("span");
+          note.className = "note";
+          note.textContent = label;
+          b.appendChild(pin);
+          b.appendChild(note);
+          barBySemi[semi] = b;
+          barEls.push(b);
+          return b;
+        }
+
+        // Geometry: widths shrink as pitch rises.
+        var GAP = 0.55; // % of board width between natural bars
+        var factors = naturals.map(function (_, i) { return 1 - i * 0.027; });
+        var sumF = factors.reduce(function (a, b) { return a + b; }, 0);
+        var avail = 100 - GAP * (naturals.length - 1);
+        var widths = factors.map(function (f) { return (f / sumF) * avail; });
+        var lefts = [];
+        var cursor = 0;
+        widths.forEach(function (w) { lefts.push(cursor); cursor += w + GAP; });
+
+        var rowN = document.createElement("div");
+        rowN.className = "row-naturals";
+        naturals.forEach(function (n, i) {
+          var b = makeBar(n.semi, n.name, false);
+          b.style.width = widths[i] + "%";
+          b.style.height = 100 - i * 2.3 + "%";
+          b.style.marginRight = (i < naturals.length - 1 ? GAP + "%" : "0");
+          rowN.appendChild(b);
+        });
+        board.appendChild(rowN);
+
+        // Raised back row of sharps, centred over the gap after C, D, F, G, A.
+        naturals.forEach(function (n, i) {
+          var sharpName = SHARP_AFTER[n.name];
+          if (!sharpName || i >= naturals.length - 1) return;
+          var b = makeBar(n.semi + 1, sharpName, true);
+          var w = widths[i] * 0.62;
+          var centre = lefts[i] + widths[i] + GAP / 2;
+          b.style.left = centre - w / 2 + "%";
+          b.style.width = w + "%";
+          b.style.bottom = "46%";
+          b.style.height = 40 - i * 1.1 + "%";
+          board.appendChild(b);
+        });
+
+        /* ---------------- striking & visuals ---------------- */
+        var strikeTimers = {};
+        function lightBar(semi) {
+          var b = barBySemi[semi];
+          if (!b) return;
+          b.classList.remove("struck");
+          void b.offsetWidth; // restart the bounce
+          b.classList.add("struck");
+          clearTimeout(strikeTimers[semi]);
+          strikeTimers[semi] = setTimeout(function () { b.classList.remove("struck"); }, 300);
+        }
+
+        function playBar(semi) {
+          strikeSound(semi);
+          lightBar(semi);
+        }
+
+        /* Pointer play: tap = strike; press + drag = glissando.
+           Tracked per pointer so two fingers can play at once. */
+        var lastBarByPointer = {};
+        function barFromPoint(x, y) {
+          var el = document.elementFromPoint(x, y);
+          while (el && el !== board) {
+            if (el.classList && el.classList.contains("bar")) return el;
+            el = el.parentNode;
+          }
+          return null;
+        }
+        function hitAt(pointerId, x, y, force) {
+          var b = barFromPoint(x, y);
+          if (!b) { lastBarByPointer[pointerId] = null; return; }
+          var semi = +b.dataset.semi;
+          if (force || lastBarByPointer[pointerId] !== semi) {
+            lastBarByPointer[pointerId] = semi;
+            stopDemo();
+            playBar(semi);
+          }
+        }
+        board.addEventListener("pointerdown", function (e) {
+          ensureAudio();
+          hitAt(e.pointerId, e.clientX, e.clientY, true);
+          e.preventDefault();
+        });
+        board.addEventListener("pointermove", function (e) {
+          if (e.buttons === 0 && e.pointerType === "mouse") return;
+          if (e.pointerType !== "mouse" && lastBarByPointer[e.pointerId] === undefined) return;
+          hitAt(e.pointerId, e.clientX, e.clientY, false);
+        });
+        function endPointer(e) { delete lastBarByPointer[e.pointerId]; }
+        board.addEventListener("pointerup", endPointer);
+        board.addEventListener("pointercancel", endPointer);
+        board.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+        // Keyboard players: buttons natively fire click on Enter/Space (detail 0).
+        barEls.forEach(function (b) {
+          b.addEventListener("click", function (e) {
+            if (e.detail === 0) { stopDemo(); playBar(+b.dataset.semi); }
+          });
+        });
+
+        /* ---------------- voice switch ---------------- */
+        var instName = document.getElementById("instName");
+        var voiceBtns = document.querySelectorAll(".voice-btn");
+        voiceBtns.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            currentVoice = btn.dataset.voice;
+            voiceBtns.forEach(function (x) { x.setAttribute("aria-pressed", x === btn ? "true" : "false"); });
+            var name = VOICES[currentVoice].name;
+            instName.textContent = name;
+            document.title = name;
+          });
+        });
+
+        /* ---------------- volume ---------------- */
+        var volumeValue = 0.6;
+        var volInput = document.getElementById("vol");
+        volInput.addEventListener("input", function () {
+          volumeValue = volInput.value / 100;
+          if (master && actx) master.gain.setTargetAtTime(volumeValue, actx.currentTime, 0.02);
+        });
+
+        /* ---------------- Ode to Joy demo ----------------
+           C major, one octave. [semitone offset, beats]       */
+        var ODE = [
+          [4, 1], [4, 1], [5, 1], [7, 1],
+          [7, 1], [5, 1], [4, 1], [2, 1],
+          [0, 1], [0, 1], [2, 1], [4, 1],
+          [4, 1.5], [2, 0.5], [2, 2],
+          [4, 1], [4, 1], [5, 1], [7, 1],
+          [7, 1], [5, 1], [4, 1], [2, 1],
+          [0, 1], [0, 1], [2, 1], [4, 1],
+          [2, 1.5], [0, 0.5], [0, 2]
+        ];
+        var BEAT_MS = 430;
+        var demoPlaying = false, demoTimer = null, demoStep = 0;
+        var demoBtn = document.getElementById("demoBtn");
+
+        function setDemoUI() {
+          demoBtn.textContent = demoPlaying ? "■ Stop Ode to Joy" : "▶ Play Ode to Joy";
+          demoBtn.classList.toggle("playing", demoPlaying);
+        }
+        function stopDemo() {
+          if (!demoPlaying) return;
+          demoPlaying = false;
+          if (demoTimer) { clearTimeout(demoTimer); demoTimer = null; }
+          setDemoUI();
+        }
+        function demoTick() {
+          if (!demoPlaying) return;
+          if (demoStep >= ODE.length) { stopDemo(); return; }
+          var note = ODE[demoStep++];
+          playBar(note[0]);
+          demoTimer = setTimeout(demoTick, note[1] * BEAT_MS);
+        }
+        demoBtn.addEventListener("click", function () {
+          if (demoPlaying) { stopDemo(); return; }
+          ensureAudio();
+          demoPlaying = true;
+          demoStep = 0;
+          setDemoUI();
+          demoTick();
+        });
+      })();
+    </script>
+    <script data-goatcounter="https://jesuslovestyler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+  </body>
+</html>
